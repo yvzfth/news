@@ -560,13 +560,10 @@ main {
 @keyframes fade { from { opacity: 0; } }
 @keyframes rise { from { opacity: 0; transform: translateY(14px); } }
 
-/* two SEPARATE side-by-side windows that read as ONE: sharp corners,
-   no gap, the AI card's border is the only seam between them, and only
-   the outside of the pair carries the shadow */
 .modal-row { display: flex; align-items: stretch; gap: 0; border-radius: 0; box-shadow: 0 30px 80px -20px rgb(0 0 0 / 0.45); }
 .modal-row .pane { border-radius: 0; box-shadow: none; }
 .article-modal { width: min(600px, 46vw); height: min(88vh, 860px); animation: rise 0.28s ease; border-right: none; }
-.ai-card { width: min(500px, 40vw); height: min(88vh, 860px); animation: rise 0.28s ease 0.08s backwards; }
+.ai-card { width: min(500px, 40vw); height: min(88vh, 860px); animation: rise 0.28s ease 0.08s backwards; border-left: 1px solid var(--rule); }
 .close-btn {
   margin-left: auto;
   display: grid;
@@ -700,37 +697,37 @@ main {
   box-shadow: 0 30px 80px -20px rgb(0 0 0 / 0.45);
 }
 
-/* article pane — a physical sheet of paper: warm stock, fiber grain
-   (SVG turbulence); the pair row carries the desk shadow, the sheet
-   itself only the inner edge shading */
-.article-modal {
-  background:
-    var(--grain) repeat,
-    linear-gradient(180deg, #fcf9f1 0%, #f6f0e1 100%);
-  border-color: color-mix(in srgb, var(--rule-strong) 75%, transparent);
-}
-.modal-row .article-modal {
-  box-shadow:
-    inset 0 0 0 1px rgb(255 255 255 / 0.4),
-    inset 0 2px 30px rgb(150 110 60 / 0.07);
-}
-.article-modal .ai-chrome { background: transparent; }  /* sheet top — no toolbar strip */
-.article-modal .article-body::-webkit-scrollbar { width: 9px; }
-.article-modal .article-body::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--ink) 14%, transparent);
-  border-radius: 999px;
-}
-[data-theme="dark"] .article-modal {
-  background:
-    var(--grain) repeat,
-    linear-gradient(180deg, #131212 0%, #0b0b0b 100%);
-}
-[data-theme="dark"] .modal-row .article-modal {
-  box-shadow:
-    inset 0 0 0 1px rgb(255 255 255 / 0.06),
-    inset 0 2px 30px rgb(0 0 0 / 0.4);
-}
-[data-theme="dark"] .modal-row { box-shadow: 0 34px 80px -24px rgb(0 0 0 / 0.85); }
+  /* article pane — warm stock, fiber grain; the pair row carries the
+     desk shadow, the sheet only the inner edge shading. Sharp borders
+     (the modal-row joins the panes into one window). */
+  .article-modal {
+    background:
+      var(--grain) repeat,
+      linear-gradient(180deg, #fcf9f1 0%, #f6f0e1 100%);
+    border-color: color-mix(in srgb, var(--rule-strong) 75%, transparent);
+  }
+  .modal-row .article-modal {
+    box-shadow:
+      inset 0 0 0 1px rgb(255 255 255 / 0.4),
+      inset 0 2px 30px rgb(150 110 60 / 0.07);
+  }
+  .article-modal .ai-chrome { background: transparent; }
+  .article-modal .article-body::-webkit-scrollbar { width: 9px; }
+  .article-modal .article-body::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--ink) 14%, transparent);
+    border-radius: 999px;
+  }
+  [data-theme="dark"] .article-modal {
+    background:
+      var(--grain) repeat,
+      linear-gradient(180deg, #131212 0%, #0b0b0b 100%);
+  }
+  [data-theme="dark"] .modal-row .article-modal {
+    box-shadow:
+      inset 0 0 0 1px rgb(255 255 255 / 0.06),
+      inset 0 2px 30px rgb(0 0 0 / 0.4);
+  }
+  [data-theme="dark"] .modal-row { box-shadow: 0 34px 80px -24px rgb(0 0 0 / 0.85); }
 .article-body {
   flex: 1;
   min-height: 0;

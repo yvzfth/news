@@ -697,6 +697,44 @@ main {
   border-radius: 14px;
   box-shadow: 0 30px 80px -20px rgb(0 0 0 / 0.45);
 }
+
+/* article pane — a physical sheet of paper: warm stock, fiber grain
+   (SVG turbulence) and a desk shadow; text scrolling inside moves over
+   the fixed sheet surface like print on stock */
+.article-modal {
+  background:
+    var(--grain) repeat,
+    linear-gradient(180deg, #fcf9f1 0%, #f6f0e1 100%);
+  border-color: color-mix(in srgb, var(--rule-strong) 75%, transparent);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.4),
+    inset 0 2px 30px rgb(150 110 60 / 0.07),
+    0 34px 80px -24px rgb(90 60 25 / 0.5);
+}
+.article-modal .ai-chrome { background: transparent; }  /* sheet top — no toolbar strip */
+.article-modal .modal-title {
+  font-family: 'Iowan Old Style', 'Palatino Linotype', Georgia, 'Times New Roman', serif;
+  letter-spacing: 0;
+}
+.article-modal .modal-content {
+  font-family: 'Iowan Old Style', 'Palatino Linotype', Georgia, 'Times New Roman', serif;
+  font-size: 15.5px;
+  line-height: 1.85;
+}
+.article-modal .article-body::-webkit-scrollbar { width: 9px; }
+.article-modal .article-body::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--ink) 14%, transparent);
+  border-radius: 999px;
+}
+[data-theme="dark"] .article-modal {
+  background:
+    var(--grain) repeat,
+    linear-gradient(180deg, #131212 0%, #0b0b0b 100%);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.06),
+    inset 0 2px 30px rgb(0 0 0 / 0.4),
+    0 34px 80px -24px rgb(0 0 0 / 0.85);
+}
 .article-body {
   flex: 1;
   min-height: 0;

@@ -560,10 +560,12 @@ main {
 @keyframes fade { from { opacity: 0; } }
 @keyframes rise { from { opacity: 0; transform: translateY(14px); } }
 
-/* two SEPARATE side-by-side windows: article window + AI window. Each has
-   its own chrome bar and its own scroll — they never share a title. */
-.modal-row { display: flex; align-items: stretch; gap: 16px; }
-.article-modal { width: min(600px, 46vw); height: min(88vh, 860px); animation: rise 0.28s ease; }
+/* two SEPARATE side-by-side windows that read as ONE: sharp corners,
+   no gap, the AI card's border is the only seam between them, and only
+   the outside of the pair carries the shadow */
+.modal-row { display: flex; align-items: stretch; gap: 0; border-radius: 0; box-shadow: 0 30px 80px -20px rgb(0 0 0 / 0.45); }
+.modal-row .pane { border-radius: 0; box-shadow: none; }
+.article-modal { width: min(600px, 46vw); height: min(88vh, 860px); animation: rise 0.28s ease; border-right: none; }
 .ai-card { width: min(500px, 40vw); height: min(88vh, 860px); animation: rise 0.28s ease 0.08s backwards; }
 .close-btn {
   margin-left: auto;
@@ -699,28 +701,20 @@ main {
 }
 
 /* article pane — a physical sheet of paper: warm stock, fiber grain
-   (SVG turbulence) and a desk shadow; text scrolling inside moves over
-   the fixed sheet surface like print on stock */
+   (SVG turbulence); the pair row carries the desk shadow, the sheet
+   itself only the inner edge shading */
 .article-modal {
   background:
     var(--grain) repeat,
     linear-gradient(180deg, #fcf9f1 0%, #f6f0e1 100%);
   border-color: color-mix(in srgb, var(--rule-strong) 75%, transparent);
+}
+.modal-row .article-modal {
   box-shadow:
     inset 0 0 0 1px rgb(255 255 255 / 0.4),
-    inset 0 2px 30px rgb(150 110 60 / 0.07),
-    0 34px 80px -24px rgb(90 60 25 / 0.5);
+    inset 0 2px 30px rgb(150 110 60 / 0.07);
 }
 .article-modal .ai-chrome { background: transparent; }  /* sheet top — no toolbar strip */
-.article-modal .modal-title {
-  font-family: 'Iowan Old Style', 'Palatino Linotype', Georgia, 'Times New Roman', serif;
-  letter-spacing: 0;
-}
-.article-modal .modal-content {
-  font-family: 'Iowan Old Style', 'Palatino Linotype', Georgia, 'Times New Roman', serif;
-  font-size: 15.5px;
-  line-height: 1.85;
-}
 .article-modal .article-body::-webkit-scrollbar { width: 9px; }
 .article-modal .article-body::-webkit-scrollbar-thumb {
   background: color-mix(in srgb, var(--ink) 14%, transparent);
@@ -730,11 +724,13 @@ main {
   background:
     var(--grain) repeat,
     linear-gradient(180deg, #131212 0%, #0b0b0b 100%);
+}
+[data-theme="dark"] .modal-row .article-modal {
   box-shadow:
     inset 0 0 0 1px rgb(255 255 255 / 0.06),
-    inset 0 2px 30px rgb(0 0 0 / 0.4),
-    0 34px 80px -24px rgb(0 0 0 / 0.85);
+    inset 0 2px 30px rgb(0 0 0 / 0.4);
 }
+[data-theme="dark"] .modal-row { box-shadow: 0 34px 80px -24px rgb(0 0 0 / 0.85); }
 .article-body {
   flex: 1;
   min-height: 0;
@@ -810,18 +806,26 @@ main {
 }
 .ai-chrome-title svg { width: 15px; height: 15px; }
 .ai-model {
-  margin-left: auto;
   font: 500 10px 'Hanken Grotesk', sans-serif;
   letter-spacing: 0.4px;
   color: var(--muted);
   border: 1px solid var(--rule);
   border-radius: 999px;
-  padding: 2px 9px;
+  padding: 1px 20px 1px 9px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 46%;
+  /* a real picker the user drives: native select with a chevron */
+  appearance: none;
+  cursor: pointer;
+  background-color: transparent;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='6'%3E%3Cpath d='M1 1l3 3 3-3' fill='none' stroke='%2378716c' stroke-width='1.3'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
 }
+.ai-model:hover { border-color: var(--rule-strong); color: var(--ink-soft); }
+.ai-model:focus { outline: none; border-color: var(--accent); }
 
 /* the summary block — editor writing area, structured for scannability */
 .ai-summary {
@@ -968,7 +972,7 @@ footer {
 .foot-note { font-style: italic; }
 
 @media (max-width: 880px) {
-  .modal-row { flex-direction: column; align-items: stretch; gap: 14px; }
+  .modal-row { flex-direction: column; align-items: stretch; gap: 0; }
   .article-modal, .ai-card { width: 100%; height: auto; max-height: none; }
   .article-body { overflow: visible; padding: 18px 18px 22px; }
   .ai-messages { max-height: 260px; min-height: 60px; }
@@ -1064,7 +1068,7 @@ footer {
 
   /* stacked full-width windows, the whole overlay scrolls */
   .overlay { padding: 0; display: block; overflow-y: auto; }
-  .modal-row { padding-bottom: 24px; gap: 12px; }
+  .modal-row { padding-bottom: 24px; gap: 0; }
   .article-modal, .ai-card {
     width: 100%;
     height: auto;

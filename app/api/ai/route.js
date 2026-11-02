@@ -152,6 +152,35 @@ const CHAT_SYSTEM = (title, content, url, webLine) =>
   'If a specific fact is in neither the article nor the web results, say you cannot verify it — never guess.\n\n' +
   `Title: ${title}\nURL: ${url}\nContent: ${content}`;
 
+export async function GET() {
+  const key = cleanKey(process.env.GROQ_API_KEY || '');
+  if (!key) {
+    return Response.json(
+      { ok: false, error: 'AI is not configured — set GROQ_API_KEY on the server.' },
+      { status: 503 }
+    );
+  }
+  const def = await pickModel(key);
+  let models = [];
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/models', {
+      headers: { Authorization: `Bearer ${key}` },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (res.ok) {
+      // chat models only — drop the audio/transcription/guard entries
+      models = (await res.json()).data
+        .map((m) => m.id)
+        .filter((id) => !/whisper|tts|guard|safeguard|playai|prompt/i.test(id))
+        .sort();
+    }
+  } catch {
+    /* fall back to the single default below */
+  }
+  if (!models.length) models = [def];
+  return Response.json({ ok: true, models: [...new Set(models)], default: def });
+}
+
 export async function POST(req) {
   const key = cleanKey(process.env.GROQ_API_KEY || '');
   if (!key) {
@@ -181,7 +210,9 @@ export async function POST(req) {
     return Response.json({ ok: false, error: 'Nothing to summarize.' }, { status: 400 });
   }
 
-  const model = await pickModel(key);
+  // the user's picked model wins — falls back to the server default
+  const requested = typeof body.model === 'string' ? body.model.trim().slice(0, 80) : '';
+  const model = requested || await pickModel(key);
 
   const callGroq = async (messages, maxTokens) => {
     const payload = { model, messages, temperature: 0.3, max_tokens: maxTokens };

@@ -202,18 +202,43 @@ function SendIcon() {
 }
 
 // the AI panel that opens under the article: auto summary first, then Q&A
+// the model is USER-PICKED (persisted in localStorage) — changing it
+// re-summarizes the article with the freshly picked model
 function ArticleChat({ item, onClose }) {
   const [summaryData, setSummaryData] = useState(null); // {hook,bullets,why} | {plain}
   const [summaryLoading, setSummaryLoading] = useState(true);
   const [summaryError, setSummaryError] = useState('');
-  const [model, setModel] = useState('');
+  const [model, setModel] = useState(''); // '' = server default, until the list lands
+  const [models, setModels] = useState(null); // null = not loaded yet
+  const [modelReady, setModelReady] = useState(false);
   const [messages, setMessages] = useState([]); // {role:'user'|'assistant', content}
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const listRef = useRef(null);
 
-  // auto-summary: requested as soon as the panel opens
+  // model menu: the server reports which chat models the Groq account
+  // really has; the user's past pick is restored from localStorage
   useEffect(() => {
+    let alive = true;
+    fetch('/api/ai')
+      .then((r) => r.json())
+      .then((d) => {
+        if (!alive || !d.ok) return setModelReady(true);
+        setModels(Array.isArray(d.models) ? d.models : []);
+        let saved = null;
+        try { saved = window.localStorage.getItem('pulse-ai-model'); } catch { /* private mode */ }
+        if (saved && (!d.models || d.models.includes(saved))) setModel(saved);
+        else if (d.default && (!d.models || d.models.includes(d.default))) setModel(d.default);
+        setModelReady(true);
+      })
+      .catch(() => { if (alive) setModelReady(true); });
+    return () => { alive = false; };
+  }, []);
+
+  // auto-summary: runs once the model choice has settled, then again
+  // every time the user switches the model
+  useEffect(() => {
+    if (!modelReady) return undefined;
     let alive = true;
     setSummaryData(null);
     setSummaryError('');
@@ -222,7 +247,7 @@ function ArticleChat({ item, onClose }) {
     fetch('/api/ai', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'summary', item }),
+      body: JSON.stringify({ action: 'summary', item, model }),
     })
       .then((r) => r.json())
       .then((d) => {
@@ -237,11 +262,17 @@ function ArticleChat({ item, onClose }) {
       .catch(() => { if (alive) setSummaryError('AI summary unavailable.'); })
       .finally(() => { if (alive) setSummaryLoading(false); });
     return () => { alive = false; };
-  }, [item.id, item.url]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [item.id, item.url, modelReady, model]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: 1e9 });
   }, [messages.length, sending]);
+
+  const changeModel = (e) => {
+    const picked = e.target.value;
+    setModel(picked);
+    try { window.localStorage.setItem('pulse-ai-model', picked); } catch { /* private mode */ }
+  };
 
   const ask = async () => {
     const q = input.trim();
@@ -254,7 +285,7 @@ function ArticleChat({ item, onClose }) {
       const res = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'chat', item, messages: history, question: q }),
+        body: JSON.stringify({ action: 'chat', item, messages: history, question: q, model }),
       });
       const d = await res.json();
       setMessages((m) => [...m, {
@@ -274,7 +305,20 @@ function ArticleChat({ item, onClose }) {
           <SparkleIcon />
           AI Summary
         </span>
-        {model ? <span className="ai-model">{model}</span> : null}
+        {models && models.length ? (
+          <select
+            id="ai-model"
+            className="ai-model"
+            value={model}
+            title="AI model — switching re-summarizes with the new model"
+            aria-label="AI model"
+            onChange={changeModel}
+          >
+            {models.map((m) => <option key={m} value={m}>{m}</option>)}
+          </select>
+        ) : (
+          model ? <span className="ai-model">{model}</span> : null
+        )}
         <button className="close-btn" aria-label="Close" onClick={onClose}>✕</button>
       </div>
 

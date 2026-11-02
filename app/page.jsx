@@ -574,7 +574,7 @@ export default function Page() {
             <Logo width={34} height={24} />
             <span className="wordmark">Pulse</span>
           </a>
-          <p className="dateline" style={{ display: 'block' }}>{today}</p>
+          <p className="dateline">{today}</p>
 
           {/* scrolled desktop: controls move INSIDE the navbar, between
               the logo and the theme button */}

@@ -52,7 +52,7 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; overflow-anchor: none; }  /* anchoring off: the dock flip must never nudge scrollY (it flapped next to the categories) */
 html[data-theme] { color-scheme: light; }
 html[data-theme="dark"] { color-scheme: dark; }
 body {
@@ -976,7 +976,9 @@ footer {
   .hero-card .figure { min-height: 220px; aspect-ratio: 16/9; }
   .hero-body { padding: 26px 24px; }
   .mast-dock { display: none !important; }   /* mast-dock needs ~800px — no navbar slot on tablet widths */
-  /* sticky edge-dock fallback: controls stick below the masthead */
+  /* sticky edge-dock fallback: controls stick below the masthead.
+     docked changes COLORS only — vertical metrics stay put so the
+     navbar+strip stack never grows or shrinks while scrolling        */
   .navstrip {
     position: sticky;
     top: var(--dock-top, 60px);
@@ -989,8 +991,6 @@ footer {
     box-shadow: 0 10px 24px -18px rgb(28 25 23 / 0.4);
   }
   [data-theme="dark"] .navstrip.docked { box-shadow: 0 12px 30px -14px rgb(0 0 0 / 0.8); }
-  .navstrip.docked .subnav { padding-top: 8px; padding-bottom: 8px; }
-  .navstrip.docked .tabs button { padding: 6px 13px; font-size: 13px; }
   .navstrip.docked #search { width: min(220px, 42vw); }
 }
 

@@ -485,9 +485,16 @@ export default function Page() {
 
   useEffect(() => { setToday(new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })); }, []);
 
-  // docking: replicate the vanilla scroll-listener (dock on any scroll)
+  // docking: dock on any scroll — with a HYSTERESIS band so the state
+  // can never flap at one scroll position (the dock flip removes the
+  // in-flow strip; the browser's scroll anchoring used to pull scrollY
+  // back across the threshold in a loop → navbar tremble next to the
+  // categories). dock past 60px, undock only below 12px.
   useEffect(() => {
-    const onScroll = () => setDocked(window.scrollY > 10);
+    const onScroll = () => {
+      const y = window.scrollY;
+      setDocked((d) => (y > 60 ? true : y < 12 ? false : d));
+    };
     const onResize = () => setWidth(window.innerWidth);
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onResize);

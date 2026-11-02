@@ -270,7 +270,6 @@ function ArticleChat({ item, onClose }) {
   return (
     <div className="pane ai-card">
       <div className="ai-chrome">
-        <span className="chrome-dots" aria-hidden="true"><i /><i /><i /></span>
         <span className="ai-chrome-title">
           <SparkleIcon />
           AI Summary
@@ -376,7 +375,6 @@ function Modal({ item, onClose }) {
         {/* window 1 — the article itself, own title & own scroll */}
         <article className="pane article-modal" role="dialog" aria-modal="true">
           <div className="ai-chrome">
-            <span className="chrome-dots" aria-hidden="true"><i /><i /><i /></span>
             <span className="ai-chrome-title">
               <DocIcon />
               Article

@@ -666,7 +666,7 @@ main {
 
 .ai-card { overflow: hidden; }
 
-/* editor chrome: mac dots + label + model tag */
+/* editor chrome: label + model tag */
 .ai-chrome {
   display: flex;
   align-items: center;
@@ -676,11 +676,6 @@ main {
   background: color-mix(in srgb, var(--rule) 40%, var(--surface));
   flex: 0 0 auto;
 }
-.chrome-dots { display: flex; gap: 6px; }
-.chrome-dots i { width: 9px; height: 9px; border-radius: 50%; }
-.chrome-dots i:nth-child(1) { background: #ff5f57; }
-.chrome-dots i:nth-child(2) { background: #febc2e; }
-.chrome-dots i:nth-child(3) { background: #28c840; }
 .ai-chrome-title {
   display: inline-flex;
   align-items: center;

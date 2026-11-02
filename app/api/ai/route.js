@@ -47,10 +47,49 @@ async function pickModel(key) {
 }
 
 // ---------------------------------------------------------------------------
-// keyless live web search (DuckDuckGo html endpoint, browser-grade UA)
+// keyless live web search — news RSS first (stable, fresh), DDG html backup
 // ---------------------------------------------------------------------------
 
+const searchCache = new Map(); // query → results (short TTL to avoid hammering)
+
 async function webSearch(query, maxResults = 5) {
+  const cacheKey = `${maxResults}|${query}`;
+  const hit = searchCache.get(cacheKey);
+  if (hit && Date.now() - hit.t < 60_000) return hit.res;
+  let res = await searchGoogleNews(query, maxResults);
+  if (!res.length) res = await searchDdg(query, maxResults);
+  searchCache.set(cacheKey, { t: Date.now(), res });
+  return res;
+}
+
+// Google News RSS — always fresh, stable headers, no bot walls
+async function searchGoogleNews(query, maxResults = 5) {
+  try {
+    const res = await fetch(
+      `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:EN`,
+      { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36' }, signal: AbortSignal.timeout(12_000) }
+    );
+    if (!res.ok) return [];
+    const xml = await res.text();
+    const out = [];
+    for (const m of xml.matchAll(/<item>[\s\S]*?<\/item>/gi)) {
+      if (out.length >= maxResults) break;
+      const block = m[0];
+      const title = (block.match(/<title>([\s\S]*?)<\/title>/i) || [])[1] || '';
+      const link = decodeURIComponent(((block.match(/<link>([^<]*)<\/link>/i) || [])[1] || '').trim());
+      const src = stripTags((block.match(/<source[^>]*>([\s\S]*?)<\/source>/i) || [])[1] || '');
+      const date = stripTags((block.match(/<pubDate>([^<]*)<\/pubDate>/i) || [])[1] || '');
+      if (!title || !link) continue;
+      out.push({ url: link, title: stripTags(title), snippet: src ? `${src}${date ? ' · ' + date : ''}` : date, source: src.toLowerCase() });
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
+// DuckDuckGo html endpoint — good snippets, but can 202-challenge AWS IPs
+async function searchDdg(query, maxResults = 5) {
   try {
     const res = await fetch(
       `https://duckduckgo.com/html/?q=${encodeURIComponent(query)}&kl=wt-wt`,
@@ -101,16 +140,16 @@ const SUMMARY_SIMPLE = (title, content, url) =>
   'in the language the article is written in. No markdown.\n\n' +
   `Title: ${title}\nURL: ${url}\nContent: ${content}`;
 
-const CHAT_SYSTEM = (title, content, url, webBlock) =>
+const CHAT_SYSTEM = (title, content, url, webLine) =>
   "You are Pulse's article assistant. The user is reading the article below and asks questions about it.\n" +
   'Rules: ground answers in the article; answer in the language the user writes in; ' +
   '5 sentences max unless the user asks for more; plain text, no markdown; ' +
   'cite the supporting domain in parentheses at the end of a claim, e.g. "(bleepingcomputer.com)".\n\n' +
-  "You ALSO have live web results fetched moments ago — dated " +
-  new Date().toISOString().slice(0, 10) + ':\n' + webBlock +
-  '\nUse them for anything the article does not cover or that is NEWER than the article ' +
-  '(follow-ups, fixes, reactions, exact figures). If the web results do not contain the ' +
-  'answer, say so plainly instead of guessing.\n\n' +
+  webLine +
+  '\nIf the block above lists real results, treat them as fresh facts you can use for anything ' +
+  'the article does not cover or that is NEWER than the article (follow-ups, fixes, reactions, exact figures). ' +
+  'Do not mention the search mechanism itself — just use the results and cite domains.\n' +
+  'If a specific fact is in neither the article nor the web results, say you cannot verify it — never guess.\n\n' +
   `Title: ${title}\nURL: ${url}\nContent: ${content}`;
 
 export async function POST(req) {
@@ -196,21 +235,21 @@ export async function POST(req) {
     }
 
     // ---- chat: live web search for facts newer than the article ----
-    let webBlock = '(live web search unavailable right now)';
+    let webBlock;
     let webHits = 0;
     if (title) {
       const results = await webSearch(title.slice(0, 160), 5);
       webHits = results.length;
-      if (results.length) {
-        webBlock = results
-          .map((r, i) => `[${i + 1}] ${r.title} — ${r.snippet}\n    url: ${r.url}`)
-          .join('\n');
-      }
+      webBlock = results.length
+        ? `Live web results, fetched just now (${new Date().toISOString().slice(0, 10)}):\n` +
+          results.map((r, i) => `[${i + 1}] ${r.title} — ${r.snippet}\n    url: ${r.url}`).join('\n')
+        : '(no live web results available for this query — do NOT tell the user about the search mechanism; answer from the article and general knowledge)';
+    } else {
+      webBlock = '(no article title to search — answer from the article and general knowledge)';
     }
-    const webLine = `Live web results (fetched just now, ${webHits} hits):\n${webBlock}`;
 
     const messages = [
-      { role: 'system', content: CHAT_SYSTEM(title, content, url, webLine) },
+      { role: 'system', content: CHAT_SYSTEM(title, content, url, webBlock) },
       ...history,
       ...(question ? [{ role: 'user', content: question }] : []),
     ];

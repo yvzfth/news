@@ -481,6 +481,19 @@ export default function Page() {
   const isMobile = width <= 640;
   const isDockCapable = width > 880;
 
+  // measure the sticky navbar's real height into --dock-top so the
+  // strips stick FLUSH to its bottom edge — the old hard-coded 44px
+  // fallback left a ~5px gap under the slim mobile navbar
+  useEffect(() => {
+    const header = document.querySelector('.masthead');
+    if (!header) return undefined;
+    const sync = () => document.documentElement.style.setProperty('--dock-top', `${header.offsetHeight}px`);
+    sync();
+    if (document.fonts?.ready) document.fonts.ready.then(sync);
+    window.addEventListener('resize', sync);
+    return () => window.removeEventListener('resize', sync);
+  }, [isMobile, docked]);
+
   const tabState = { active: activeCat, onSelect: (cat) => setActiveCat(cat) };
 
   // filtering mirrors the old client: category + search over title/snippet/content

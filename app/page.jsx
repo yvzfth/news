@@ -161,6 +161,136 @@ function SearchRow({ query, onQuery, busy, refetch }) {
   );
 }
 
+function SparkleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <g fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L13.663 8.5a2 2 0 0 0 1.063 1.062l6.135 1.582a.5.5 0 0 1 0 .962L14.726 14.063A2 2 0 0 0 13.662 15.5l-1.581 6.135a.5.5 0 0 1-.963 0z" />
+      </g>
+    </svg>
+  );
+}
+
+function SendIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+      <g fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 3 3 10.5l7 2.5M21 3l-6.5 18-4-8M21 3 10 13" />
+      </g>
+    </svg>
+  );
+}
+
+// the AI panel that opens under the article: auto summary first, then Q&A
+function ArticleChat({ item }) {
+  const [summary, setSummary] = useState('');
+  const [summaryLoading, setSummaryLoading] = useState(true);
+  const [summaryError, setSummaryError] = useState('');
+  const [model, setModel] = useState('');
+  const [messages, setMessages] = useState([]); // {role:'user'|'assistant', content}
+  const [input, setInput] = useState('');
+  const [sending, setSending] = useState(false);
+  const listRef = useRef(null);
+
+  // auto-summary: requested as soon as the panel opens
+  useEffect(() => {
+    let alive = true;
+    setSummary('');
+    setSummaryError('');
+    setMessages([]);
+    setSummaryLoading(true);
+    fetch('/api/ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'summary', item }),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (!alive) return;
+        if (d.ok) {
+          setSummary(d.text);
+          setModel(d.model || '');
+        } else {
+          setSummaryError(d.error || 'AI summary unavailable.');
+        }
+      })
+      .catch(() => { if (alive) setSummaryError('AI summary unavailable.'); })
+      .finally(() => { if (alive) setSummaryLoading(false); });
+    return () => { alive = false; };
+  }, [item.id, item.url]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    listRef.current?.scrollTo({ top: 1e9 });
+  }, [messages.length, sending]);
+
+  const ask = async () => {
+    const q = input.trim();
+    if (!q || sending || summaryLoading) return;
+    setInput('');
+    setSending(true);
+    const history = [...messages, { role: 'user', content: q }];
+    setMessages(history);
+    try {
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'chat', item, messages: history, question: q }),
+      });
+      const d = await res.json();
+      setMessages((m) => [...m, {
+        role: 'assistant',
+        content: d.ok ? d.text : `⚠ ${d.error || 'AI is unavailable right now.'}`,
+      }]);
+    } catch {
+      setMessages((m) => [...m, { role: 'assistant', content: '⚠ Could not reach the AI service.' }]);
+    }
+    setSending(false);
+  };
+
+  return (
+    <div className="ai-panel" onClick={(e) => e.stopPropagation()}>
+      <div className="ai-head">
+        <SparkleIcon />
+        AI
+        {model ? <span className="ai-model">{model}</span> : null}
+      </div>
+
+      <div className={`ai-summary${summaryLoading ? ' loading' : ''}`}>
+        {summaryLoading ? 'Summarizing…' : summaryError ? summaryError : summary}
+      </div>
+
+      {messages.length ? (
+        <div className="ai-messages" ref={listRef}>
+          {messages.map((m, i) => (
+            <div key={i} className={`ai-msg ${m.role}`}>{m.content}</div>
+          ))}
+          {sending ? (
+            <div className="ai-msg assistant ai-typing">
+              <span className="ai-dots" />
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      <div className="ai-input-row">
+        <input
+          type="text"
+          placeholder={
+            summaryLoading ? 'Summarizing first…' : 'Ask something about this news…'
+          }
+          value={input}
+          disabled={summaryLoading}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(); } }}
+        />
+        <button className={`ai-send${sending ? ' busy' : ''}`} aria-label="Ask" title="Ask the AI" onClick={ask}>
+          <SendIcon />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function Modal({ item, onClose }) {
   const [dateStr, setDateStr] = useState('');
   useEffect(() => {
@@ -221,6 +351,7 @@ function Modal({ item, onClose }) {
           <a className="modal-link" href={item.url} target="_blank" rel="noopener noreferrer">
             Read full story at source ↗
           </a>
+          <ArticleChat item={item} />
         </div>
       </article>
     </div>

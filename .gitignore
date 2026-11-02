@@ -3,4 +3,6 @@ node_modules/
 out/
 dev.log
 *.log
+.env
+.env.*
 .DS_Store

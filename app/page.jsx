@@ -342,20 +342,30 @@ function ArticleChat({ item, onClose }) {
 
 function Modal({ item, onClose }) {
   const [dateStr, setDateStr] = useState('');
+  const [minimized, setMinimized] = useState(false);
   useEffect(() => {
     if (!item) return undefined;
     setDateStr(
       `${DAYS_NAMES[new Date(item.published).getDay()]}, ` +
       `${new Date(item.published).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`
     );
+    setMinimized(false); // a freshly opened article always shows in full
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
-    document.body.style.overflow = 'hidden';
     return () => {
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = '';
     };
   }, [item, onClose]);
+
+  // scroll lock follows the minimized state: locked behind the full
+  // window, released while the mini card floats so the feed itself
+  // stays browsable underneath
+  useEffect(() => {
+    if (!item) return undefined;
+    document.body.style.overflow = minimized ? '' : 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, [item, minimized]);
 
   if (!item) return null;
 
@@ -370,7 +380,12 @@ function Modal({ item, onClose }) {
     : [];
 
   return (
-    <div className="overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div
+      className={`overlay${minimized ? ' minimized' : ''}`}
+      onClick={(e) => { if (!minimized && e.target === e.currentTarget) setMinimized(true); }}
+    >
+      {/* the full window only hides while minimized — its DOM (and the
+          AI conversation in it) stays alive and remounts nothing          */}
       <div className="modal-row" onClick={(e) => e.stopPropagation()}>
         {/* window 1 — the article itself, own title & own scroll */}
         <article className="pane article-modal" role="dialog" aria-modal="true">
@@ -413,6 +428,25 @@ function Modal({ item, onClose }) {
         {/* window 2 — the AI assistant, independent from the article window */}
         <ArticleChat item={item} onClose={onClose} />
       </div>
+
+      {/* minimized — small docked card; tap to restore, ✕ to close for good */}
+      {minimized ? (
+        <div className="mini-modal" onClick={(e) => e.stopPropagation()}>
+          <button
+            className="mini-restore"
+            title="Restore window"
+            aria-label="Restore article window"
+            onClick={() => setMinimized(false)}
+          >
+            <Figure item={item} cls="mini-fig" />
+            <span className="mini-text">
+              <span className="mini-overline">{item.source}</span>
+              <span className="mini-title">{item.title}</span>
+            </span>
+          </button>
+          <button className="mini-close" title="Close" aria-label="Close article window" onClick={onClose}>✕</button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -477,6 +511,8 @@ export default function Page() {
     await load();
     setBusy(false);
   }, [load]);
+
+  const closeItem = useCallback(() => setOpenItem(null), []);
 
   const isMobile = width <= 640;
   const isDockCapable = width > 880;
@@ -670,7 +706,7 @@ export default function Page() {
         <p className="foot-note">Every headline appears exactly once — zero clutter, zero duplicates.</p>
       </footer>
 
-      <Modal item={openItem} onClose={() => setOpenItem(null)} />
+      <Modal item={openItem} onClose={closeItem} />
     </>
   );
 }

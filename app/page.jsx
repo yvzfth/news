@@ -133,23 +133,9 @@ function Tabs({ active, onSelect }) {
   );
 }
 
-function SearchRow({ query, onQuery, busy, refetch }) {
+function SearchRow({ query, onQuery }) {
   return (
     <div className="search-row">
-      <button
-        id="fetch-btn"
-        className={busy ? 'busy' : ''}
-        title="Fetch feeds now"
-        aria-label="Fetch feeds"
-        onClick={refetch}
-      >
-        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-          <g fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 13v8l-4-4m4 4l4-4" />
-            <path d="M4.393 15.269A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.436 8.284" />
-          </g>
-        </svg>
-      </button>
       <input
         id="search"
         type="search"
@@ -158,6 +144,28 @@ function SearchRow({ query, onQuery, busy, refetch }) {
         onChange={(e) => onQuery(e.target.value)}
       />
     </div>
+  );
+}
+
+// circular refresh arrow for the navbar — only rendered while the wire
+// is stale (never fetched, or the daily pull is overdue). Sits next to
+// the theme button on every breakpoint, spins while pulling feeds.
+function FetchButton({ busy, onClick }) {
+  return (
+    <button
+      id="fetch-btn"
+      className={busy ? 'busy' : ''}
+      title="Fetch feeds now"
+      aria-label="Fetch feeds now"
+      onClick={onClick}
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <g fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+          <path d="M21 3v5h-5" />
+        </g>
+      </svg>
+    </button>
   );
 }
 
@@ -501,9 +509,15 @@ export default function Page() {
   const controls = (
     <>
       <Tabs {...tabState} />
-      <SearchRow query={query} onQuery={setQuery} busy={busy} refetch={refetch} />
+      <SearchRow query={query} onQuery={setQuery} />
     </>
   );
+
+  // the wire refreshes once a day (Vercel cron, 05:00 UTC) — the fetch
+  // arrow only appears when that pull is overdue or has never happened
+  const WIRE_STALE_MS = 26 * 60 * 60 * 1000; // 26h — a day plus slack
+  const wireAge = news.lastFetch ? Date.now() - new Date(news.lastFetch) : Infinity;
+  const wireStale = !news.lastFetch || wireAge > WIRE_STALE_MS;
 
   return (
     <>
@@ -559,7 +573,12 @@ export default function Page() {
             </div>
           ) : null}
 
-          <ThemeButton />
+          {/* fetch arrow + theme — pinned to the navbar's right corner
+              on every breakpoint; the arrow vanishes once the wire is fresh */}
+          <div className="mast-actions">
+            {wireStale ? <FetchButton busy={busy} onClick={refetch} /> : null}
+            <ThemeButton />
+          </div>
         </div>
       </header>
 
@@ -577,7 +596,7 @@ export default function Page() {
           <div className="subnav">
             {panel === 'cat'
               ? <Tabs {...tabState} />
-              : <SearchRow query={query} onQuery={setQuery} busy={busy} refetch={refetch} />}
+              : <SearchRow query={query} onQuery={setQuery} />}
           </div>
         </div>
       ) : null}
@@ -588,7 +607,7 @@ export default function Page() {
             ? 'Could not reach the server.'
             : news.lastFetch
               ? `${items.length} unique stories · wire updated ${relTime(news.lastFetch)}`
-              : 'never fetched — press “Fetch feeds”'}
+              : 'never fetched — the ↻ arrow in the top bar pulls the wire'}
         </div>
 
         <section id="hero">
@@ -619,7 +638,7 @@ export default function Page() {
 
         {!items.length && !fetchError ? (
           <div id="empty" className="empty">
-            {query ? `No match for “${query}”.` : 'No stories yet — hit “Fetch feeds” to pull the wire.'}
+            {query ? `No match for “${query}”.` : 'No stories yet — the ↻ arrow in the top bar pulls the wire.'}
           </div>
         ) : null}
       </main>

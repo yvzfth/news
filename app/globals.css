@@ -159,10 +159,20 @@ a { color: inherit; }
   white-space: nowrap;
 }
 
+/* fetch arrow + theme button cluster — the right-most cell of the
+   navbar at every breakpoint; the arrow only mounts while the wire
+   is stale (see the wireStale check in app/page.jsx) */
+.mast-actions {
+  grid-column: 3;
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* theme toggle — squircle icon button, single icon at a time,
    perfectly centered via grid stacking (no absolute math) */
 #theme-btn {
-  grid-column: 3;
   justify-self: end;
   display: grid;
   place-items: center;
@@ -273,13 +283,15 @@ html:not([data-theme="dark"]) .icon-sun { opacity: 1; rotate: 0deg; scale: 1; }
     align-items: center;
     animation: fade 0.25s ease;
   }
-  .masthead.docked #theme-btn { grid-column: 3; grid-row: 1 / 3; }
+  .masthead.docked .mast-actions {
+    grid-column: 3;
+    grid-row: 1 / 3;          /* spans both rows → buttons share one centered line */
+  }
   /* compact variants — real estate here is tight */
   .mast-dock .tabs { flex: 0 2 auto; gap: 2px; overflow: hidden; }
   .mast-dock .tabs button { padding: 6px 11px; font-size: 12.5px; }
   .mast-dock .search-row { display: flex; align-items: center; gap: 8px; flex: 1 1 auto; max-width: 300px; min-width: 90px; }
   .mast-dock #search { width: 100%; min-width: 60px; }
-  .mast-dock #fetch-btn { width: 34px; height: 34px; }  /* square pill — no ellipse look */
 }
 
 /* flow bar — normal position + the ≤880px sticky fallback */
@@ -318,25 +330,30 @@ html:not([data-theme="dark"]) .icon-sun { opacity: 1; rotate: 0deg; scale: 1; }
 
 .search-row { display: flex; align-items: center; gap: 12px; }
 
-/* fetch button — icon only (the wires-down “fetch” glyph) */
+/* fetch button — full-round circular arrow, lives in the navbar next
+   to the theme button; spins while the pull is running */
 #fetch-btn {
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 37px;
+  width: 40px;
+  height: 40px;
   padding: 0;
   flex: 0 0 auto;      /* never squeeze the icon pill in flex rows */
-  background: transparent;
+  background: var(--surface);
   color: var(--accent);
   border: 1px solid var(--rule-strong);
-  border-radius: 999px;
+  border-radius: 50%;  /* full round */
   cursor: pointer;
-  transition: 0.18s;
-  white-space: nowrap;
+  transition: color 0.2s, border-color 0.2s, box-shadow 0.25s;
 }
-#fetch-btn:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+#fetch-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
+}
+#fetch-btn:active { scale: 0.92; }
+#fetch-btn svg { width: 17px; height: 17px; }
 #fetch-btn.busy { opacity: 0.5; pointer-events: none; }
-#fetch-btn svg { width: 16px; height: 16px; transition: transform 0.2s; }
 #fetch-btn.busy svg { animation: spin 0.9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -879,8 +896,11 @@ footer {
   }
   .icon-btn { width: 30px; height: 30px; border-radius: 9px; }
   .icon-btn svg { width: 14px; height: 14px; }
-  #theme-btn { width: 30px; height: 30px; border-radius: 9px; grid-column: 3; }
+  #theme-btn { width: 30px; height: 30px; border-radius: 9px; }
   #theme-btn svg { width: 13px; height: 13px; }
+  /* the fetch arrow tucks in next to the theme button, same size */
+  #fetch-btn { width: 30px; height: 30px; }
+  #fetch-btn svg { width: 14px; height: 14px; }
   .masthead { position: sticky; }
   /* the open panel always docks flush under the slim navbar — it moves
      as one fixed stack on scroll, buttons never shift under the navbar */
@@ -910,7 +930,6 @@ footer {
   /* search takes the full row under the tabs */
   .search-row { width: 100%; }
   #search { flex: 1 1 auto; width: auto; padding: 5px 2px; font-size: 13.5px; }
-  #fetch-btn { width: 30px; height: 30px; }
 
   .modal-row { align-items: stretch; gap: 12px; }
 

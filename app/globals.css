@@ -277,7 +277,7 @@ html:not([data-theme="dark"]) .icon-sun { opacity: 1; rotate: 0deg; scale: 1; }
   }
   .masthead.docked .mast-actions { grid-column: 3; }
   /* compact variants — real estate here is tight */
-  .mast-dock .tabs { flex: 0 2 auto; gap: 2px; overflow: hidden; }
+  .mast-dock .tabs { flex: 0 2 auto; gap: 2px; overflow: hidden; flex-wrap: nowrap; }  /* single line — wrapped tab rows would pump the navbar height */
   .mast-dock .tabs button { padding: 6px 11px; font-size: 12.5px; }
   .mast-dock .search-row { display: flex; align-items: center; gap: 8px; flex: 1 1 auto; max-width: 300px; min-width: 90px; }
   .mast-dock #search { width: 100%; min-width: 60px; }

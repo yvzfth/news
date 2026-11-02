@@ -248,10 +248,13 @@ function ArticleChat({ item }) {
   };
 
   return (
-    <div className="ai-panel" onClick={(e) => e.stopPropagation()}>
-      <div className="ai-head">
-        <SparkleIcon />
-        AI
+    <div className="pane ai-card" onClick={(e) => e.stopPropagation()}>
+      <div className="ai-chrome">
+        <span className="chrome-dots" aria-hidden="true"><i /><i /><i /></span>
+        <span className="ai-chrome-title">
+          <SparkleIcon />
+          AI Summary
+        </span>
         {model ? <span className="ai-model">{model}</span> : null}
       </div>
 
@@ -259,7 +262,7 @@ function ArticleChat({ item }) {
         {summaryLoading ? 'Summarizing…' : summaryError ? summaryError : summary}
       </div>
 
-      {messages.length ? (
+      {messages.length || sending ? (
         <div className="ai-messages" ref={listRef}>
           {messages.map((m, i) => (
             <div key={i} className={`ai-msg ${m.role}`}>{m.content}</div>
@@ -330,28 +333,34 @@ function Modal({ item, onClose }) {
           </figure>
         ) : null}
         <div className="modal-body">
-          <div className="modal-meta">
-            <Chip item={item} />
-            {item.social ? <SocialBadge /> : null}
-            <span className="src">{item.source}</span>
-            <span className="dot" />
-            <span>{dateStr} · {relTime(item.published)}</span>
-          </div>
-          {item.social ? (
-            <div className="modal-warning">
-              ⚠ This is an unverified social-media post — the claims aren&apos;t fact-checked and it can be misleading. Treat it as a signal, not news.
-            </div>
-          ) : null}
           <h2 className="modal-title">{item.title}</h2>
-          <div className="modal-content">
-            {paragraphs.length ? paragraphs.map((p, i) => <p key={i}>{p}</p>) : (
-              <p>Full detail is available at the original source.</p>
-            )}
+          <div className="modal-grid">
+            {/* card 1 — the article itself */}
+            <div className="pane pane-article">
+              <div className="modal-meta">
+                <Chip item={item} />
+                {item.social ? <SocialBadge /> : null}
+                <span className="src">{item.source}</span>
+                <span className="dot" />
+                <span>{dateStr} · {relTime(item.published)}</span>
+              </div>
+              {item.social ? (
+                <div className="modal-warning">
+                  ⚠ This is an unverified social-media post — the claims aren&apos;t fact-checked and it can be misleading. Treat it as a signal, not news.
+                </div>
+              ) : null}
+              <div className="modal-content">
+                {paragraphs.length ? paragraphs.map((p, i) => <p key={i}>{p}</p>) : (
+                  <p>Full detail is available at the original source.</p>
+                )}
+              </div>
+              <a className="modal-link" href={item.url} target="_blank" rel="noopener noreferrer">
+                Read full story at source ↗
+              </a>
+            </div>
+            {/* card 2 — the AI editor pane (summary + Q&A) */}
+            <ArticleChat item={item} />
           </div>
-          <a className="modal-link" href={item.url} target="_blank" rel="noopener noreferrer">
-            Read full story at source ↗
-          </a>
-          <ArticleChat item={item} />
         </div>
       </article>
     </div>

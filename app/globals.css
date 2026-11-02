@@ -24,6 +24,7 @@
   --shadow: 0 1px 2px rgb(28 25 23 / 0.05), 0 8px 24px -12px rgb(28 25 23 / 0.18);
   --shadow-hover: 0 2px 4px rgb(28 25 23 / 0.06), 0 18px 40px -16px rgb(28 25 23 / 0.28);
   --radius: 14px;
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E");
 }
 
 /* ------------- full-black dark theme (manual toggle) ------------- */
@@ -264,7 +265,8 @@ html:not([data-theme="dark"]) .icon-sun { opacity: 1; rotate: 0deg; scale: 1; }
   .dateline { display: block; }  /* centered dateline lives only in the unscrolled flow */
   .masthead.docked .mast-inner { grid-template-columns: auto 1fr auto; }
   .masthead.docked .brand { grid-column: 1; grid-row: 1; }
-  .masthead.docked .wordmark { font-size: 24px; }
+  /* wordmark keeps its unscrolled size — its line box drives the row
+     height, so the navbar stays exactly as tall rolled-up or not        */
   .masthead.docked .dateline { display: none; }  /* no 2nd row — same navbar height scrolled or not */
   .masthead.docked .mast-dock {
     display: flex;

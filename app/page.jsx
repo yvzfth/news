@@ -67,8 +67,10 @@ function Figure({ item, cls }) {
           src={item.image}
           onError={() => setBroken(true)}
         />
-      ) : null}
-      <span className="ph-letter">{(item.source || item.category || '•').charAt(0).toUpperCase()}</span>
+      ) : (
+        // only cards with NO (working) thumbnail get the letter placeholder
+        <span className="ph-letter">{(item.source || item.category || '•').charAt(0).toUpperCase()}</span>
+      )}
     </div>
   );
 }

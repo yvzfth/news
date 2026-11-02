@@ -8,9 +8,13 @@ import { fileURLToPath } from 'node:url';
 import { Feeds, HN, ReleaseRepos, XFollowing, XBearer, SeenMaxAgeDays, ShowDays } from './sources.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = path.join(__dirname, '..', 'data');
-const NEWS_FILE = path.join(DATA_DIR, 'news.json');
-const SEEN_FILE = path.join(DATA_DIR, 'seen.json');
+// On Vercel the filesystem is read-only except /tmp, and it is per-instance —
+// the serverless routes point the data dir there (see lib/data.js); locally
+// ./data next to the project is kept as before.
+export const DATA_DIR = process.env.PULSE_DATA_DIR
+  || (process.env.VERCEL ? '/tmp/pulse-data' : path.join(__dirname, '..', 'data'));
+export const NEWS_FILE = path.join(DATA_DIR, 'news.json');
+export const SEEN_FILE = path.join(DATA_DIR, 'seen.json');
 
 const FETCH_TIMEOUT_MS = 20000;
 

@@ -1,14 +1,16 @@
 {
   "name": "pulse-news",
-  "version": "1.0.0",
-  "description": "Daily tech / hacking / politics / currency news aggregator. Zero dependencies.",
+  "private": true,
   "type": "module",
-  "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
     "fetch": "node fetch-now.js"
   },
-  "engines": {
-    "node": ">=18"
+  "dependencies": {
+    "next": "16.4.4",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
   }
 }

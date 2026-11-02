@@ -161,6 +161,18 @@ function SearchRow({ query, onQuery, busy, refetch }) {
   );
 }
 
+function DocIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+      <g fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2v6a2 2 0 0 0 2 2h6" />
+        <path d="M6 21V4a2 2 0 0 1 2-2h9l5 5v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2Z" />
+        <path d="M10 13h6M10 17h6" />
+      </g>
+    </svg>
+  );
+}
+
 function SparkleIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -182,8 +194,8 @@ function SendIcon() {
 }
 
 // the AI panel that opens under the article: auto summary first, then Q&A
-function ArticleChat({ item }) {
-  const [summary, setSummary] = useState('');
+function ArticleChat({ item, onClose }) {
+  const [summaryData, setSummaryData] = useState(null); // {hook,bullets,why} | {plain}
   const [summaryLoading, setSummaryLoading] = useState(true);
   const [summaryError, setSummaryError] = useState('');
   const [model, setModel] = useState('');
@@ -195,7 +207,7 @@ function ArticleChat({ item }) {
   // auto-summary: requested as soon as the panel opens
   useEffect(() => {
     let alive = true;
-    setSummary('');
+    setSummaryData(null);
     setSummaryError('');
     setMessages([]);
     setSummaryLoading(true);
@@ -208,7 +220,7 @@ function ArticleChat({ item }) {
       .then((d) => {
         if (!alive) return;
         if (d.ok) {
-          setSummary(d.text);
+          setSummaryData(d.summary || { plain: '' });
           setModel(d.model || '');
         } else {
           setSummaryError(d.error || 'AI summary unavailable.');
@@ -248,7 +260,7 @@ function ArticleChat({ item }) {
   };
 
   return (
-    <div className="pane ai-card" onClick={(e) => e.stopPropagation()}>
+    <div className="pane ai-card">
       <div className="ai-chrome">
         <span className="chrome-dots" aria-hidden="true"><i /><i /><i /></span>
         <span className="ai-chrome-title">
@@ -256,10 +268,37 @@ function ArticleChat({ item }) {
           AI Summary
         </span>
         {model ? <span className="ai-model">{model}</span> : null}
+        <button className="close-btn" aria-label="Close" onClick={onClose}>✕</button>
       </div>
 
       <div className={`ai-summary${summaryLoading ? ' loading' : ''}`}>
-        {summaryLoading ? 'Summarizing…' : summaryError ? summaryError : summary}
+        {summaryLoading ? (
+          'Summarizing…'
+        ) : summaryError ? (
+          summaryError
+        ) : summaryData?.plain ? (
+          <p className="ai-plain">{summaryData.plain}</p>
+        ) : (
+          summaryData && (
+            <>
+              {summaryData.hook ? <p className="ai-lead">{summaryData.hook}</p> : null}
+              {summaryData.bullets?.length ? (
+                <>
+                  <div className="ai-label">Key points</div>
+                  <ul className="ai-bullets">
+                    {summaryData.bullets.map((b, i) => <li key={i}>{b}</li>)}
+                  </ul>
+                </>
+              ) : null}
+              {summaryData.why ? (
+                <>
+                  <div className="ai-label">Why it matters</div>
+                  <p className="ai-why">{summaryData.why}</p>
+                </>
+              ) : null}
+            </>
+          )
+        )}
       </div>
 
       {messages.length || sending ? (
@@ -325,44 +364,49 @@ function Modal({ item, onClose }) {
 
   return (
     <div className="overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <article className="modal" role="dialog" aria-modal="true">
-        <button className="modal-close" aria-label="Close" onClick={onClose}>✕</button>
-        {item.image ? (
-          <figure className="modal-hero">
-            <img src={item.image} referrerPolicy="no-referrer" alt={item.title || ''} />
-          </figure>
-        ) : null}
-        <div className="modal-body">
-          <h2 className="modal-title">{item.title}</h2>
-          <div className="modal-grid">
-            {/* card 1 — the article itself */}
-            <div className="pane pane-article">
-              <div className="modal-meta">
-                <Chip item={item} />
-                {item.social ? <SocialBadge /> : null}
-                <span className="src">{item.source}</span>
-                <span className="dot" />
-                <span>{dateStr} · {relTime(item.published)}</span>
-              </div>
-              {item.social ? (
-                <div className="modal-warning">
-                  ⚠ This is an unverified social-media post — the claims aren&apos;t fact-checked and it can be misleading. Treat it as a signal, not news.
-                </div>
-              ) : null}
-              <div className="modal-content">
-                {paragraphs.length ? paragraphs.map((p, i) => <p key={i}>{p}</p>) : (
-                  <p>Full detail is available at the original source.</p>
-                )}
-              </div>
-              <a className="modal-link" href={item.url} target="_blank" rel="noopener noreferrer">
-                Read full story at source ↗
-              </a>
-            </div>
-            {/* card 2 — the AI editor pane (summary + Q&A) */}
-            <ArticleChat item={item} />
+      <div className="modal-row" onClick={(e) => e.stopPropagation()}>
+        {/* window 1 — the article itself, own title & own scroll */}
+        <article className="pane article-modal" role="dialog" aria-modal="true">
+          <div className="ai-chrome">
+            <span className="chrome-dots" aria-hidden="true"><i /><i /><i /></span>
+            <span className="ai-chrome-title">
+              <DocIcon />
+              Article
+            </span>
+            <button className="close-btn" aria-label="Close" onClick={onClose}>✕</button>
           </div>
-        </div>
-      </article>
+          <div className="article-body">
+            {item.image ? (
+              <figure className="modal-hero">
+                <img src={item.image} referrerPolicy="no-referrer" alt={item.title || ''} />
+              </figure>
+            ) : null}
+            <div className="modal-meta">
+              <Chip item={item} />
+              {item.social ? <SocialBadge /> : null}
+              <span className="src">{item.source}</span>
+              <span className="dot" />
+              <span>{dateStr} · {relTime(item.published)}</span>
+            </div>
+            {item.social ? (
+              <div className="modal-warning">
+                ⚠ This is an unverified social-media post — the claims aren&apos;t fact-checked and it can be misleading. Treat it as a signal, not news.
+              </div>
+            ) : null}
+            <h2 className="modal-title">{item.title}</h2>
+            <div className="modal-content">
+              {paragraphs.length ? paragraphs.map((p, i) => <p key={i}>{p}</p>) : (
+                <p>Full detail is available at the original source.</p>
+              )}
+            </div>
+            <a className="modal-link" href={item.url} target="_blank" rel="noopener noreferrer">
+              Read full story at source ↗
+            </a>
+          </div>
+        </article>
+        {/* window 2 — the AI assistant, independent from the article window */}
+        <ArticleChat item={item} onClose={onClose} />
+      </div>
     </div>
   );
 }

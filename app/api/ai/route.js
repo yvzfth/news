@@ -1,27 +1,28 @@
 // POST /api/ai — AI summary + Q&A over a news article, powered by Groq.
 //
 // GROQ_API_KEY is read SERVER-SIDE only (the browser never sees it).
-// Model selection, most accurate first:
+// Model selection, most capable first:
 //   1. PULSE_AI_MODEL env override (any model id your Groq account shows)
 //   2. a Groq "Compound" system model, when the account offers one — it
-//      reaches the live web, so it can answer with the freshest facts
+//      reaches the live web natively
 //   3. openai/gpt-oss-120b — the strongest reasoning chat model on Groq
 //
-// The article text itself (fetched minutes ago by our own aggregator) is
-// always embedded in the system prompt, so answers stay grounded in the
-// story the user is reading even when the model cannot browse.
+// Fresh data: Groq's plain chat models cannot browse, so for Q&A this route
+// performs its own live DuckDuckGo search (no API key needed) and injects
+// the just-fetched results into the system prompt. The article body —
+// aggregated minutes ago by our own fetcher — is always embedded too.
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const FALLBACK_MODEL = 'openai/gpt-oss-120b';
 
-// a 5-minute cache — models on the account are polled occasionally so a
-// Compound (web-capable) model is picked up automatically if enabled
 let cachedModel = null;
 let cachedAt = 0;
 
 const cleanKey = (k = '') => k.trim().replace(/^["']+|["']+$/g, '');
+const stripTags = (s = '') =>
+  s.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 
 async function pickModel(key) {
   if (process.env.PULSE_AI_MODEL) return process.env.PULSE_AI_MODEL.trim();
@@ -40,23 +41,76 @@ async function pickModel(key) {
       cachedAt = Date.now();
     }
   } catch {
-    /* keep fallback */
+    /* keep the fallback */
   }
   return cachedModel;
 }
 
+// ---------------------------------------------------------------------------
+// keyless live web search (DuckDuckGo html endpoint, browser-grade UA)
+// ---------------------------------------------------------------------------
+
+async function webSearch(query, maxResults = 5) {
+  try {
+    const res = await fetch(
+      `https://duckduckgo.com/html/?q=${encodeURIComponent(query)}&kl=wt-wt`,
+      {
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+          Accept: 'text/html',
+        },
+        signal: AbortSignal.timeout(12_000),
+      }
+    );
+    if (!res.ok) return [];
+    const html = await res.text();
+
+    const results = [];
+    const re =
+      /<a[^>]+class="[^"]*result__a[^"]*"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>([\s\S]*?)(?=<a[^>]+class="[^"]*result__a|$)/gi;
+    for (const m of html.matchAll(re)) {
+      if (results.length >= maxResults) break;
+      // href is a duckduckgo redirect (/l/?uddg=<encoded real url>)
+      const uddg = (m[1].replace(/&amp;/g, '&').match(/[?&]uddg=([^&]+)/) || [])[1];
+      const url = uddg ? decodeURIComponent(uddg) : m[1];
+      const title = stripTags(m[2]).slice(0, 160);
+      if (!url.startsWith('http') || !title) continue;
+      const snipMatch = m[3].match(/result__snippet[^>]*>([\s\S]*?)<\/(a|div|span)>/i);
+      const snippet = snipMatch ? stripTags(snipMatch[1]).slice(0, 240) : '';
+      results.push({ url, title, snippet });
+    }
+    return results;
+  } catch {
+    return [];
+  }
+}
+
 const SUMMARY_SYSTEM = (title, content, url) =>
-  "You are Pulse's news assistant. Summarize the article for a technically literate reader.\n" +
-  'Rules: 3-4 tight sentences max, plain text, no markdown headers/bullets, ' +
-  'no TLDR prefix, answer in the language the article is written in.\n\n' +
+  "You are Pulse's news assistant. Summarize the article for a technically literate reader — STRUCTURED.\n" +
+  'Reply with ONLY a JSON object, exactly this shape:\n' +
+  '{"hook": string, "bullets": string[], "why": string}\n' +
+  '- "hook": ONE crisp sentence (max 160 chars) capturing what happened.\n' +
+  '- "bullets": 3-5 key facts, each a short standalone line (max 120 chars), no markdown, no numbering.\n' +
+  '- "why": one sentence (max 200 chars) on why it matters / impact.\n' +
+  'Write every value in the language the article is written in. No extra keys, no markdown, no text before or after the JSON.\n\n' +
   `Title: ${title}\nURL: ${url}\nContent: ${content}`;
 
-const CHAT_SYSTEM = (title, content, url) =>
+const SUMMARY_SIMPLE = (title, content, url) =>
+  "You are Pulse's news assistant. Summarize the article below in 3-4 tight plain-text sentences, " +
+  'in the language the article is written in. No markdown.\n\n' +
+  `Title: ${title}\nURL: ${url}\nContent: ${content}`;
+
+const CHAT_SYSTEM = (title, content, url, webBlock) =>
   "You are Pulse's article assistant. The user is reading the article below and asks questions about it.\n" +
   'Rules: ground answers in the article; answer in the language the user writes in; ' +
   '5 sentences max unless the user asks for more; plain text, no markdown; ' +
-  'if the question goes beyond the article (e.g. events after publication), answer ' +
-  'with general knowledge and say clearly that you cannot browse the live web here.\n\n' +
+  'cite the supporting domain in parentheses at the end of a claim, e.g. "(bleepingcomputer.com)".\n\n' +
+  "You ALSO have live web results fetched moments ago — dated " +
+  new Date().toISOString().slice(0, 10) + ':\n' + webBlock +
+  '\nUse them for anything the article does not cover or that is NEWER than the article ' +
+  '(follow-ups, fixes, reactions, exact figures). If the web results do not contain the ' +
+  'answer, say so plainly instead of guessing.\n\n' +
   `Title: ${title}\nURL: ${url}\nContent: ${content}`;
 
 export async function POST(req) {
@@ -89,37 +143,87 @@ export async function POST(req) {
   }
 
   const model = await pickModel(key);
-  const messages = [
-    { role: 'system', content: action === 'summary' ? SUMMARY_SYSTEM(title, content, url) : CHAT_SYSTEM(title, content, url) },
-    ...history,
-    ...(action === 'chat' && question ? [{ role: 'user', content: question }] : []),
-  ];
 
-  try {
+  const callGroq = async (messages, maxTokens) => {
+    const payload = { model, messages, temperature: 0.3, max_tokens: maxTokens };
+    // gpt-oss models waste tokens on chain-of-thought when allowed — keep it minimal
+    if (/^openai\/gpt-oss/i.test(model)) payload.reasoning_effort = 'low';
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model,
-        messages,
-        temperature: action === 'summary' ? 0.3 : 0.5,
-        max_tokens: action === 'summary' ? 400 : 700,
-      }),
+      body: JSON.stringify(payload),
       signal: AbortSignal.timeout(55_000), // stays under the route's maxDuration
     });
-
     if (!res.ok) {
       const detail = (await res.text()).slice(0, 300);
-      console.error(`groq ${res.status}:`, detail);
+      return { error: `groq ${res.status}: ${detail}` };
+    }
+    const data = await res.json();
+    return { text: data.choices?.[0]?.message?.content?.trim() || '' };
+  };
+
+  try {
+    if (action === 'summary') {
+      let text;
+      let call = await callGroq([{ role: 'system', content: SUMMARY_SYSTEM(title, content, url) }], 700);
+      if (call.error) throw new Error(call.error);
+      text = call.text;
+
+      // flaky case: gpt-oss sometimes returns nothing in content — one plain retry
+      if (!text) {
+        call = await callGroq([{ role: 'system', content: SUMMARY_SIMPLE(title, content, url) }], 500);
+        if (call.error) throw new Error(call.error);
+        text = call.text;
+        if (text) return Response.json({ ok: true, summary: { plain: text }, model });
+      }
+
+      let summary;
+      try {
+        const jsonish = text.replace(/^```(?:json)?\s*/m, '').replace(/```\s*$/m, '');
+        const start = jsonish.indexOf('{');
+        const end = jsonish.lastIndexOf('}');
+        const parsed = JSON.parse(jsonish.slice(start, end + 1));
+        summary = {
+          hook: String(parsed.hook || '').trim(),
+          bullets: Array.isArray(parsed.bullets) ? parsed.bullets.map((b) => String(b).trim()).filter(Boolean).slice(0, 6) : [],
+          why: String(parsed.why || '').trim(),
+        };
+        if (!summary.hook && !summary.bullets.length && !summary.why) throw new Error('empty');
+      } catch {
+        summary = text ? { plain: text } : { plain: '' };
+      }
+      return Response.json({ ok: true, summary, model });
+    }
+
+    // ---- chat: live web search for facts newer than the article ----
+    let webBlock = '(live web search unavailable right now)';
+    let webHits = 0;
+    if (title) {
+      const results = await webSearch(title.slice(0, 160), 5);
+      webHits = results.length;
+      if (results.length) {
+        webBlock = results
+          .map((r, i) => `[${i + 1}] ${r.title} — ${r.snippet}\n    url: ${r.url}`)
+          .join('\n');
+      }
+    }
+    const webLine = `Live web results (fetched just now, ${webHits} hits):\n${webBlock}`;
+
+    const messages = [
+      { role: 'system', content: CHAT_SYSTEM(title, content, url, webLine) },
+      ...history,
+      ...(question ? [{ role: 'user', content: question }] : []),
+    ];
+
+    const call = await callGroq(messages, 700);
+    if (call.error) {
+      console.error('groq error:', call.error);
       return Response.json(
         { ok: false, error: 'AI request failed at Groq. Try again.' },
         { status: 502 }
       );
     }
-
-    const data = await res.json();
-    const text = data.choices?.[0]?.message?.content?.trim() || '';
-    return Response.json({ ok: true, text, model });
+    return Response.json({ ok: true, text: call.text, model, web: webHits });
   } catch (e) {
     console.error('groq call error:', e.message);
     return Response.json(

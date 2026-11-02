@@ -1,0 +1,767 @@
+/* ============================================================
+   Pulse — editorial design · light + full-black dark themes
+   ============================================================ */
+
+:root {
+  --paper: #f7f5f2;
+  --surface: #ffffff;
+  --ink: #1c1917;
+  --ink-soft: #44403c;
+  --muted: #78716c;
+  --rule: #e7e2da;
+  --rule-strong: #d6d0c4;
+  --accent: #9a3412;
+  --tech: #1d4ed8;
+  --security: #b45309;
+  --software: #0f766e;
+  --hn: #cc5500;
+  --releases: #0369a1;
+  --politics: #6d28d9;
+  --world: #15803d;
+  --logo-a: #f59e0b;
+  --logo-b: #ef4444;
+  --tile-glow: rgb(239 68 68 / 0.35);
+  --shadow: 0 1px 2px rgb(28 25 23 / 0.05), 0 8px 24px -12px rgb(28 25 23 / 0.18);
+  --shadow-hover: 0 2px 4px rgb(28 25 23 / 0.06), 0 18px 40px -16px rgb(28 25 23 / 0.28);
+  --radius: 14px;
+}
+
+/* ------------- full-black dark theme (manual toggle) ------------- */
+[data-theme="dark"] {
+  --paper: #000000;
+  --surface: #0d0d10;
+  --ink: #f7f7f9;            /* near-white headlines — max contrast */
+  --ink-soft: #cfd3db;
+  --muted: #9ba1ad;
+  --rule: #242429;
+  --rule-strong: #3a3a42;
+  --accent: #ffa45c;
+  --tech: #7cabff;
+  --security: #ffb454;
+  --software: #52dccb;
+  --hn: #ff9440;
+  --releases: #67b7ff;
+  --politics: #c39bff;
+  --world: #62dfa3;
+  --logo-a: #ffb020;
+  --logo-b: #ff4d4d;
+  --tile-glow: rgb(255 77 77 / 0.55);
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.6), 0 10px 30px -12px rgb(0 0 0 / 0.75);
+  --shadow-hover: 0 2px 4px rgb(0 0 0 / 0.6), 0 20px 50px -16px rgb(0 0 0 / 0.9);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+html[data-theme] { color-scheme: light; }
+html[data-theme="dark"] { color-scheme: dark; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font: 15px/1.6 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  overflow-x: clip;
+  transition: background 0.3s, color 0.3s;
+}
+img { display: block; }
+a { color: inherit; }
+
+/* ============================================================
+   animated SVG logo
+   ============================================================ */
+
+.logo {
+  display: block;
+  overflow: visible;
+  filter: drop-shadow(0 0 10px var(--tile-glow));
+  transition: filter 0.3s;
+}
+.brand:hover .logo { filter: drop-shadow(0 0 18px var(--tile-glow)); }
+
+.grad-a { stop-color: var(--logo-a); transition: stop-color 0.3s; }
+.grad-b { stop-color: var(--logo-b); transition: stop-color 0.3s; }
+
+.pulse-line {
+  fill: none;
+  /* gradient stroke, with a solid fallback for old renderers */
+  stroke: var(--accent);
+  stroke: url(#logo-grad);
+  stroke-width: 3.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  /* flowing heartbeat: dash sweeps through the line on a loop */
+  animation: pulse-flow 2.6s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+@keyframes pulse-flow {
+  0%   { stroke-dasharray: 0 74; stroke-dashoffset: 0; }
+  55%  { stroke-dasharray: 74 74; stroke-dashoffset: -74; }
+  100% { stroke-dasharray: 74 74; stroke-dashoffset: -148; }
+}
+
+.pulse-dot {
+  fill: var(--logo-b);
+  animation: dot-glow 2.6s ease-in-out infinite;
+}
+@keyframes dot-glow {
+  0%, 55% { opacity: 0.25; }
+  58%, 82% { opacity: 1; }
+  100% { opacity: 0.25; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-line, .pulse-dot { animation: none; }
+}
+
+/* ============================================================
+   masthead
+   ============================================================ */
+
+.masthead {
+  border-bottom: 1px solid var(--rule-strong);
+  background: var(--paper);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+/* 3-zone grid keeps the dateline perfectly centered and the
+   theme button pinned hard to the right corner, at every width */
+.mast-inner {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 12px 28px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+}
+.brand {
+  grid-column: 1;
+  justify-self: start;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+.wordmark {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 700;
+  font-size: 29px;
+  letter-spacing: -0.5px;
+}
+.dateline {
+  grid-column: 2;
+  display: none; /* JS fills this */
+  font-size: 11.5px;
+  letter-spacing: 2.6px;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* theme toggle — squircle icon button, single icon at a time,
+   perfectly centered via grid stacking (no absolute math) */
+#theme-btn {
+  grid-column: 3;
+  justify-self: end;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 13px;
+  border: 1px solid var(--rule-strong);
+  background: var(--surface);
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, box-shadow 0.25s;
+}
+#theme-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
+}
+#theme-btn:active { scale: 0.92; }
+
+#theme-btn .icon-sun,
+#theme-btn .icon-moon {
+  grid-area: 1 / 1;
+  display: grid;
+  place-items: center;
+  transition: opacity 0.25s, rotate 0.35s, scale 0.35s;
+}
+html[data-theme="dark"] .icon-sun { opacity: 0; rotate: 90deg; scale: 0.6; }
+html[data-theme="dark"] .icon-moon { opacity: 1; rotate: 0deg; scale: 1; }
+html:not([data-theme="dark"]) .icon-moon { opacity: 0; rotate: -90deg; scale: 0.6; }
+html:not([data-theme="dark"]) .icon-sun { opacity: 1; rotate: 0deg; scale: 1; }
+
+/* ============================================================
+   subnav — tabs + fetch beside search
+   Two dock targets: on wide screens the controls move INSIDE
+   the sticky masthead (between logo and theme button) once you
+   scroll; on ≤880px they stick to the navbar edge below it.
+   Toggled by the dock logic in app.js.
+   ============================================================ */
+
+/* mobile-only navbar icon bar — grid (categories) + magnifier (search) */
+.mast-icons { display: none; }
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid var(--rule-strong);
+  background: var(--surface);
+  color: var(--ink-soft);
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.2s, border-color 0.2s, box-shadow 0.25s;
+}
+.icon-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
+}
+.icon-btn:active { scale: 0.94; }
+.icon-btn.active {
+  color: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
+}
+.icon-btn svg { width: 15px; height: 15px; display: block; }
+
+.dock-sentinel { height: 0; overflow: hidden; }
+
+/* navbar cell the docked controls land in — hidden until .docked */
+.mast-dock {
+  grid-column: 2;
+  display: none;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+/* --- docked navbar geometry ---
+   scrolled state: the masthead becomes a 2-row grid — the logo gets a
+   small dateline under it, and the tab · fetch · search block sits on
+   a single centered line between the logo and the theme button. */
+.masthead.docked .mast-inner { grid-template-columns: auto 1fr auto; }
+.masthead.docked .brand { grid-column: 1; grid-row: 1; }
+.masthead.docked .wordmark { font-size: 24px; }
+.masthead.docked .dateline {
+  display: block;
+  grid-column: 1;
+  grid-row: 2;
+  justify-self: start;
+  align-self: start;
+  margin-top: -6px;
+  font-size: 9px;
+  letter-spacing: 1.8px;
+  text-align: left;
+}
+.masthead.docked .mast-dock {
+  display: flex;
+  grid-column: 2;
+  grid-row: 1 / 3;          /* spans both rows → buttons share one centered line */
+  justify-content: center;
+  align-items: center;
+  animation: fade 0.25s ease;
+}
+.masthead.docked #theme-btn { grid-column: 3; grid-row: 1 / 3; }
+/* compact variants — real estate here is tight */
+.mast-dock .tabs { flex: 0 2 auto; gap: 2px; overflow: hidden; }
+.mast-dock .tabs button { padding: 6px 11px; font-size: 12.5px; }
+.mast-dock .search-row { display: flex; align-items: center; gap: 8px; flex: 1 1 auto; max-width: 300px; min-width: 90px; }
+.mast-dock #search { width: 100%; min-width: 60px; }
+.mast-dock #fetch-btn { width: 34px; height: 34px; }  /* square pill — no ellipse look */
+
+/* flow bar — normal position + the ≤880px sticky fallback */
+.navstrip {
+  background: var(--paper);
+}
+
+.subnav {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 14px 28px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.tabs button {
+  font: 500 13.5px 'Inter', sans-serif;
+  background: transparent;
+  color: var(--muted);
+  border: none;
+  padding: 8px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  text-transform: capitalize;
+  transition: 0.15s;
+}
+.tabs button:hover { color: var(--ink); background: var(--rule); }
+.tabs button.active {
+  background: var(--ink);
+  color: var(--paper);
+  font-weight: 600;
+}
+
+.search-row { display: flex; align-items: center; gap: 12px; }
+
+/* fetch button — icon only (the wires-down “fetch” glyph) */
+#fetch-btn {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 37px;
+  padding: 0;
+  flex: 0 0 auto;      /* never squeeze the icon pill in flex rows */
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: 0.18s;
+  white-space: nowrap;
+}
+#fetch-btn:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+#fetch-btn.busy { opacity: 0.5; pointer-events: none; }
+#fetch-btn svg { width: 16px; height: 16px; transition: transform 0.2s; }
+#fetch-btn.busy svg { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+#search {
+  width: min(260px, 52vw);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--rule-strong);
+  color: var(--ink);
+  padding: 8px 2px;
+  font: 400 14px 'Inter', sans-serif;
+  transition: border-color 0.2s;
+}
+#search::placeholder { color: var(--muted); }
+#search:focus { outline: none; border-color: var(--accent); }
+
+/* ============================================================
+   main
+   ============================================================ */
+
+main {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 10px 28px 70px;
+  width: 100%;
+}
+.fetch-line {
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.4px;
+  padding: 8px 0 6px;
+}
+
+/* ---------- hero ---------- */
+.hero-card {
+  margin: 14px 0 34px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--rule);
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  transition: transform 0.25s, box-shadow 0.25s;
+}
+.hero-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+.hero-card .figure { position: relative; min-height: 320px; overflow: hidden; }
+.hero-card img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; transition: transform 0.5s; }
+.hero-card:hover img { transform: scale(1.025); }
+.hero-body { padding: 34px 36px; display: flex; flex-direction: column; justify-content: center; }
+.hero-kicker { display: inline; margin-bottom: 14px; }
+.hero-title {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 600;
+  font-size: clamp(22px, 2.6vw, 34px);
+  line-height: 1.25;
+  letter-spacing: -0.3px;
+  margin-bottom: 14px;
+}
+.hero-snip { color: var(--ink-soft); font-size: 15px; margin-bottom: 18px; max-width: 54ch; }
+
+/* ---------- category chip ---------- */
+.chip {
+  display: inline-block;
+  font: 600 10.5px 'Inter', sans-serif;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--accent);
+}
+.chip.tech { background: var(--tech); }
+.chip.security { background: var(--security); }
+.chip.software { background: var(--software); }
+.chip.hn { background: var(--hn); }
+.chip.releases { background: var(--releases); }
+.chip.politics { background: var(--politics); }
+.chip.world { background: var(--world); }
+[data-theme="dark"] .chip,
+[data-theme="dark"].chip { color: #0b0b0e; }      /* dark chips readable on black */
+[data-theme="dark"] .chip.tech { color: #0b1220; }
+
+/* social/X unverified badge — sits next to the category chip */
+.badge-social {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 600 10px 'Inter', sans-serif;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--security) 65%, transparent);
+  color: var(--security);
+  background: color-mix(in srgb, var(--security) 12%, transparent);
+}
+
+/* ---------- day sections / grid ---------- */
+.day-head {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin: 40px 0 18px;
+}
+.day-head h2 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 600;
+  font-size: 19px;
+  letter-spacing: -0.2px;
+}
+.day-head .count { font-size: 12px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+.day-head .line { flex: 1; height: 1px; background: var(--rule); align-self: center; }
+
+.grid {
+  display: grid;
+  /* min(100%, …) keeps a single column on narrow phones — no overflow */
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 22px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: transform 0.22s, box-shadow 0.22s, border-color 0.22s;
+  display: flex;
+  flex-direction: column;
+}
+.card:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); border-color: var(--rule-strong); }
+.card .figure {
+  aspect-ratio: 16/9;
+  overflow: hidden;
+  position: relative;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--cat-color, var(--muted)) 55%, var(--paper)) 0%,
+                    color-mix(in srgb, var(--cat-color, var(--muted)) 18%, var(--paper)) 60%);
+}
+.card .figure .ph-letter {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 56px;
+  font-weight: 700;
+  color: rgb(255 255 255 / 0.55);
+  text-shadow: 0 2px 14px rgb(0 0 0 / 0.25);
+}
+.card img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; transition: transform 0.45s; }
+.card:hover img { transform: scale(1.04); }
+.card-body { padding: 18px 20px 16px; display: flex; flex-direction: column; flex: 1; }
+.card-title {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 600;
+  font-size: 17.5px;
+  line-height: 1.32;
+  letter-spacing: -0.2px;
+  margin: 10px 0 8px;
+}
+.card:hover .card-title {
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--cat-color, var(--accent)) 55%, transparent);
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1.5px;
+}
+.card-snip { color: var(--ink-soft); font-size: 13.5px; line-height: 1.55; flex: 1; }
+.card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  font-size: 11.5px;
+  color: var(--muted);
+  flex-wrap: wrap;
+}
+.card-meta .dot { width: 3px; height: 3px; border-radius: 50%; background: var(--rule-strong); }
+.card-meta .src { font-weight: 500; }
+
+/* ============================================================
+   modal
+   ============================================================ */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 0.6);
+  backdrop-filter: blur(6px);
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  animation: fade 0.2s ease;
+}
+.overlay[hidden] { display: none; }
+@keyframes fade { from { opacity: 0; } }
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } }
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 18px;
+  width: min(720px, 100%);
+  max-height: min(86vh, 900px);
+  overflow-y: auto;
+  position: relative;
+  box-shadow: 0 30px 80px -20px rgb(0 0 0 / 0.45);
+  animation: rise 0.28s ease;
+}
+.modal-close {
+  position: sticky;
+  top: 14px;
+  margin: 14px 14px -46px auto;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: color-mix(in srgb, var(--paper) 82%, transparent);
+  color: var(--ink);
+  font-size: 15px;
+  cursor: pointer;
+  z-index: 2;
+  backdrop-filter: blur(6px);
+  transition: 0.15s;
+}
+.modal-close:hover { background: var(--paper); }
+.modal-hero { aspect-ratio: 16/8; position: relative; overflow: hidden; }
+.modal-hero img { width: 100%; height: 100%; object-fit: cover; }
+.modal-hero .ph-letter {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: 'Fraunces', serif;
+  font-size: 64px;
+  color: rgb(255 255 255 / 0.6);
+}
+.modal-body { padding: 30px 42px 38px; }
+.modal-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--muted);
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.modal-meta .dot { width: 3px; height: 3px; border-radius: 50%; background: var(--rule-strong); }
+.modal-title {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 600;
+  font-size: clamp(22px, 3.4vw, 30px);
+  line-height: 1.25;
+  letter-spacing: -0.4px;
+  margin-bottom: 18px;
+}
+.modal-content { color: var(--ink-soft); font-size: 15.5px; line-height: 1.75; }
+.modal-content p + p { margin-top: 12px; }
+.modal-warning {
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--security) 55%, transparent);
+  border-left-width: 3px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--security) 10%, transparent);
+  color: var(--ink-soft);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+.modal-link {
+  display: inline-block;
+  margin-top: 26px;
+  font: 600 13.5px 'Inter', sans-serif;
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1.5px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  padding-bottom: 2px;
+}
+.modal-link:hover { border-color: var(--accent); }
+
+/* ============================================================
+   misc
+   ============================================================ */
+
+.empty { text-align: center; color: var(--muted); padding: 80px 20px; font-size: 15px; }
+
+footer {
+  border-top: 1px solid var(--rule-strong);
+  text-align: center;
+  padding: 42px 24px 46px;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.9;
+  max-width: 660px;
+  margin: 0 auto;
+}
+.foot-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  font-size: 19px;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+.foot-brand svg { border-radius: 50%; }
+.foot-note { font-style: italic; }
+
+@media (max-width: 880px) {
+  .hero-card { grid-template-columns: 1fr; }
+  .hero-card .figure { min-height: 220px; aspect-ratio: 16/9; }
+  .hero-body { padding: 26px 24px; }
+  .dateline { display: none !important; }
+  .mast-dock { display: none !important; }   /* mast-dock needs ~800px — no navbar slot on tablet widths */
+  /* sticky edge-dock fallback: controls stick below the masthead */
+  .navstrip {
+    position: sticky;
+    top: var(--dock-top, 60px);
+    z-index: 18;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.25s, box-shadow 0.25s;
+  }
+  .navstrip.docked {
+    border-bottom-color: var(--rule-strong);
+    box-shadow: 0 10px 24px -18px rgb(28 25 23 / 0.4);
+  }
+  [data-theme="dark"] .navstrip.docked { box-shadow: 0 12px 30px -14px rgb(0 0 0 / 0.8); }
+  .navstrip.docked .subnav { padding-top: 8px; padding-bottom: 8px; }
+  .navstrip.docked .tabs button { padding: 6px 13px; font-size: 13px; }
+  .navstrip.docked #search { width: min(220px, 42vw); }
+}
+
+@media (max-width: 640px) {
+  /* ---------- ONE-LINE navbar: logo · [grid] [magnifier] [theme] ----------
+     the tabs and the search live in collapsible panels under this line,
+     opened by their icon buttons (see the toggles in app.js)            */
+  .mast-inner {
+    padding: 4px 12px;
+    gap: 10px;
+    grid-template-columns: auto 1fr auto;
+  }
+  .wordmark { font-size: 19px; }
+  .logo { width: 22px; height: 16px; }
+  .mast-icons {
+    display: flex;
+    grid-column: 2;
+    justify-self: end;
+    gap: 7px;
+  }
+  .icon-btn { width: 30px; height: 30px; border-radius: 9px; }
+  .icon-btn svg { width: 14px; height: 14px; }
+  #theme-btn { width: 30px; height: 30px; border-radius: 9px; grid-column: 3; }
+  #theme-btn svg { width: 13px; height: 13px; }
+  .masthead { position: sticky; }
+  /* the open panel always docks flush under the slim navbar — it moves
+     as one fixed stack on scroll, buttons never shift under the navbar */
+  .navstrip { top: var(--dock-top, 44px); }
+  .masthead.docked .mast-inner { grid-template-columns: auto 1fr auto; }  /* neutralize the ≥880 docked grid */
+  .masthead.docked .wordmark { font-size: 19px; }
+
+  /* the strip itself is a hidden collapsible panel */
+  .navstrip { display: none; }
+  body.cat-open .navstrip,
+  body.search-open .navstrip { display: block; }
+  /* the two panels are mutually exclusive (toggles do this too) */
+  body.cat-open:not(.search-open) .navstrip .search-row { display: none; }
+  body.search-open:not(.cat-open) .navstrip .tabs { display: none; }
+
+  .subnav { padding: 6px 12px; gap: 10px; }
+
+  /* tabs run on a single swipeable line instead of wrapping to 3 rows */
+  .tabs {
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;           /* firefox */
+    -webkit-overflow-scrolling: touch;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tabs button { flex: 0 0 auto; padding: 6px 11px; font-size: 12.5px; }
+
+  /* search takes the full row under the tabs */
+  .search-row { width: 100%; }
+  #search { flex: 1 1 auto; width: auto; padding: 5px 2px; font-size: 13.5px; }
+  #fetch-btn { width: 30px; height: 30px; }
+
+  .modal-body, main { padding-left: 14px; padding-right: 14px; }
+
+  /* tighter rhythm for small screens */
+  main { padding-top: 6px; padding-bottom: 56px; }
+  .fetch-line { padding: 6px 0 4px; }
+  .hero-card { margin: 8px 0 22px; border-radius: 14px; }
+  .hero-body { padding: 18px 16px 20px; }
+  .hero-snip { font-size: 14px; }
+  .day-head { margin: 24px 0 14px; }
+  .grid { gap: 14px; }
+  .card-body { padding: 14px 14px 12px; }
+  .card-title { font-size: 16.5px; }
+  .card-snip { font-size: 13px; }
+
+  /* the modal becomes a full-screen sheet */
+  .overlay { padding: 0; }
+  .modal {
+    width: 100%;
+    height: 100%;
+    max-height: 100dvh;
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+  }
+  .modal-body { padding: 20px 16px 30px; }
+  .modal-title { font-size: 21px; }
+  .modal-hero { aspect-ratio: 16/10; }
+
+  footer { padding: 30px 18px 40px; font-size: 12px; }
+}
+
+@media (max-width: 380px) {
+  .mast-inner { padding-left: 12px; padding-right: 12px; }
+  .subnav, main, .modal-body { padding-left: 12px; padding-right: 12px; }
+  .wordmark { font-size: 22px; }
+  .grid { gap: 10px; }
+  .tabs button { padding: 6px 10px; font-size: 12.5px; }
+  .hero-title { font-size: 20px; }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "pulse-news",
+  "version": "1.0.0",
+  "description": "Daily tech / hacking / politics / currency news aggregator. Zero dependencies.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "fetch": "node fetch-now.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
